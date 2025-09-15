@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  stacks-node:
+    image: blockstack/stacks-blockchain:3.2.0.0.0-alpine
+    container_name: stacks-node
+    ports:
+      - "20443:20443"  # RPC port
+      - "20444:20444"  # P2P port
+    volumes:
+      - ./settings/Devnet.toml:/src/stacks-node/Config.toml
+      - stacks-data:/src/stacks-node/data
+    command: ["/bin/stacks-node", "start", "--config", "/src/stacks-node/Config.toml"]
+    environment:
+      - RUST_LOG=info
+    networks:
+      - stacks-network
+
+  stacks-api:
+    image: hirosystems/stacks-blockchain-api:latest
+    container_name: stacks-api
+    ports:
+      - "3999:3999"    # API port
+      - "3700:3700"    # Events port
+    environment:
+      - STACKS_CHAIN_ID=0x80000000
+      - STACKS_CORE_RPC_HOST=stacks-node
+      - STACKS_CORE_RPC_PORT=20443
+      - STACKS_CORE_EVENT_HOST=stacks-node
+      - STACKS_CORE_EVENT_PORT=3700
+      - STACKS_BLOCKCHAIN_API_PORT=3999
+      - STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
+      - STACKS_BLOCKCHAIN_API_DB=postgres://postgres:postgres@postgres:5432/stacks_blockchain_api
+      - STACKS_BLOCKCHAIN_API_PG_HOST=postgres
+      - STACKS_BLOCKCHAIN_API_PG_PORT=5432
+      - STACKS_BLOCKCHAIN_API_PG_USER=postgres
+      - STACKS_BLOCKCHAIN_API_PG_PASSWORD=postgres
+      - STACKS_BLOCKCHAIN_API_PG_DATABASE=stacks_blockchain_api
+    depends_on:
+      - postgres
+      - stacks-node
+    networks:
+      - stacks-network
+
+  postgres:
+    image: postgres:alpine
+    container_name: stacks-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=stacks_blockchain_api
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - stacks-network
+
+  stacks-explorer:
+    image: hirosystems/explorer:latest
+    container_name: stacks-explorer
+    ports:
+      - "8000:8000"
+    environment:
+      - STACKS_API_URL=http://stacks-api:3999
+      - STACKS_EXPLORER_PORT=8000
+    depends_on:
+      - stacks-api
+    networks:
+      - stacks-network
+
+volumes:
+  stacks-data:
+  postgres-data:
+
+networks:
+  stacks-network:
+    driver: bridge
