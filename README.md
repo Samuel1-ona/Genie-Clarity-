@@ -1,0 +1,1 @@
+This is a simple posting clarity contract , that has functionality of posting , editing and deleting of posts. The projects contains both the frontend integration, the unit testing and devnet interaction.
